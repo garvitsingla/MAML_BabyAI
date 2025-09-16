@@ -3,7 +3,6 @@ import numpy as np
 import random
 from environment import (GoToLocalMissionEnv, 
                          GoToOpenMissionEnv, 
-                         GoToSeqMissionEnv, 
                          GoToObjDoorMissionEnv,  
                          PickupDistMissionEnv,
                          OpenDoorMissionEnv, 
@@ -58,21 +57,8 @@ ACTION_OBJ_DOOR_MISSIONS = (
     [f"open a {c} door"      for c in DOOR_COLORS]
 )
 
-
-
-# Generate all valid 2-step missions (no repeats)
-SEQ_MISSIONS = [
-    f"{m1} and {m2}"
-    for m1 in LOCAL_MISSIONS + DOOR_MISSIONS
-    for m2 in LOCAL_MISSIONS + DOOR_MISSIONS
-    if m1 != m2
-]
-
 # Open Door Missions including location-based
 OPEN_DOOR_ALL_MISSIONS = OPEN_DOOR_MISSIONS + DOOR_LOC_MISSIONS
-
-# (Optional) for general environments supporting both
-ALL_MISSIONS = LOCAL_MISSIONS + DOOR_MISSIONS + OPEN_DOOR_MISSIONS + SEQ_MISSIONS
 
 # Env setup to get dims
 room_size=5
@@ -152,7 +138,7 @@ print(f"room_size: {room_size}\n num_dists: {num_dists}\n max_steps: {max_steps}
 
 
 # # ActionObjDoor
-# base_env = ActionObjDoorMissionEnv()
+# base_env = ActionObjDoorMissionEnv(objects=OBJECTS, door_colors=DOOR_COLORS, obj_colors=COLORS)
 # missions = ACTION_OBJ_DOOR_MISSIONS
 # env = BabyAIMissionTaskWrapper(base_env, missions=missions)
 # print("General setup for ActionObjDoor")

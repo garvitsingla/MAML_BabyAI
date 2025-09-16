@@ -16,8 +16,7 @@ from updated_sampler_lang import (BabyAIMissionTaskWrapper,
                           preprocess_obs)
 from environment import (LOCAL_MISSIONS, 
                          DOOR_MISSIONS, 
-                         OPEN_DOOR_MISSIONS, 
-                         SEQ_MISSIONS, 
+                         OPEN_DOOR_MISSIONS,  
                          PICKUP_MISSIONS, 
                          OPEN_DOOR_ALL_MISSIONS,
                          OPEN_TWO_DOORS_MISSIONS,
@@ -26,9 +25,7 @@ from environment import (LOCAL_MISSIONS,
                          PUTNEXT_MISSIONS)
 from environment import (GoToLocalMissionEnv, 
                             GoToOpenMissionEnv, 
-                            GoToSeqMissionEnv, 
                             GoToObjDoorMissionEnv, 
-                            # OpenMissionEnv, 
                             PickupDistMissionEnv,
                             OpenDoorMissionEnv,
                             OpenDoorLocMissionEnv,
@@ -53,22 +50,22 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("ALL PARAMETERS ARE BEING TRAINED - ENCODER, ADAPTER, POLICY")
 # Create BabyAI env
-room_size=5
-num_dists=2
-max_steps=25
+room_size=7
+num_dists=12
+max_steps=500
 num_rows=2
 num_cols=2
 
 
 vectorizer = CountVectorizer()
 
-# GoToLocal
-base_env = GoToLocalMissionEnv(room_size=room_size, num_dists=num_dists, max_steps=max_steps)
-missions = LOCAL_MISSIONS
-vectorizer.fit(missions)
-env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-model = "GoToLocal"
-print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \n")
+# # GoToLocal
+# base_env = GoToLocalMissionEnv(room_size=room_size, num_dists=num_dists, max_steps=max_steps)
+# missions = LOCAL_MISSIONS
+# vectorizer.fit(missions)
+# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+# model = "GoToLocal"
+# print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \n")
 
 
 # # PickupDist
@@ -153,16 +150,16 @@ print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps}
 
 
 
-# # ActionObjDoor
-# base_env = ActionObjDoorMissionEnv()
-# missions = ACTION_OBJ_DOOR_MISSIONS
-# CountVectorizer(ngram_range=(1, 2), lowercase=True)
-# vectorizer.fit(missions)
-# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-# model = "ActionObjDoor"
-# meta_batch_size = 20
-# print("General setup for ActionObjDoor")
-# # print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
+# ActionObjDoor
+base_env = ActionObjDoorMissionEnv(objects = None, door_colors=None, obj_colors=None)
+missions = ACTION_OBJ_DOOR_MISSIONS
+CountVectorizer(ngram_range=(1, 2), lowercase=True)
+vectorizer.fit(missions)
+env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+model = "ActionObjDoor"
+meta_batch_size = 20
+print("General setup for ActionObjDoor")
+# print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
 
 
 # # PutNextLocal
@@ -174,20 +171,6 @@ print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps}
 # model = "PutNextLocal"
 # print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n")
 
-
-
-# # Open
-# base_env = OpenMissionEnv(room_size=room_size,num_rows=num_rows, num_cols=num_cols, num_dists=num_dists,max_steps=max_steps)
-# missions = OPEN_DOOR_MISSIONS
-# vectorizer.fit(missions)
-# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-# print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \nnum_rows: {num_rows} \nnum_cols: {num_cols}")
-
-
-
-# # GoToSeq
-# base_env = GoToSeqMissionEnv(room_size=room_size, num_rows=num_rows, num_cols=num_cols, num_dists=num_dists, max_steps=max_steps)
-# env = BabyAIMissionTaskWrapper(base_env, missions=SEQ_MISSIONS)
 
 
 print("Using environment:", base_env)
@@ -226,7 +209,7 @@ mission_adapter = MissionParamAdapter(mission_encoder_output_dim, policy_param_s
 # Sampler setup
 sampler = MultiTaskSampler(
     env=env,
-    batch_size=3,         # Number of episodes per task
+    batch_size=30,         # Number of episodes per task
     policy=policy,
     baseline=baseline,
     seed=1,
@@ -252,7 +235,7 @@ def print_param_stats(module, name):
 # 5. Training loop
 avg_steps_per_batch = []
 meta_batch_size = globals().get("meta_batch_size") or min(12, len(env.missions))
-num_batches = 5   # Number of meta-batches
+num_batches = 100   # Number of meta-batches
 
 tasks = sampler.sample_tasks(len(env.missions))
 print(f"\nTotal {len(env.missions)} Tasks that can be sampled : {tasks}\n")
@@ -368,55 +351,37 @@ print(f"Execution time: {(end_time - start_time)/60}minutes")
 
 
 
-
-# # Open
+# # Open Door
 # torch.save({
 #     "policy": policy.state_dict(),
 #     "mission_encoder": mission_encoder.state_dict(),
 #     "mission_adapter": mission_adapter.state_dict()
-# }, f"lang_model/lang_policy_Open_{room_size}_{num_dists}_{num_rows}x{num_cols}.pth")
+# }, f"lang_model/lang_policy_{model}_{room_size}_{max_steps}.pth")
 
 # # Save the vectorizer
-# with open(f"lang_model/vectorizer_lang_Open_{room_size}_{num_dists}_{num_rows}x{num_cols}.pkl", "wb") as f:
+# with open(f"lang_model/vectorizer_lang_{model}_{room_size}_{max_steps}.pkl", "wb") as f:
 #     pickle.dump(vectorizer, f)
 
-# print("lang-policy parameters saved to lang_model/lang_policy_Open.pth")
-# print("lang_based policy for training Go To ObjDoor finished!")
+# print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_{room_size}_{max_steps}.pth")
+# print("lang_based policy for training OpenDoor finished!")
 
 
 
 
-# Open Door
+
+# Acton Obj Door
 torch.save({
     "policy": policy.state_dict(),
     "mission_encoder": mission_encoder.state_dict(),
     "mission_adapter": mission_adapter.state_dict()
-}, f"lang_model/lang_policy_{model}_{room_size}.pth")
+}, f"lang_model/lang_policy_{model}.pth")
 
 # Save the vectorizer
-with open(f"lang_model/vectorizer_lang_{model}_{room_size}.pkl", "wb") as f:
+with open(f"lang_model/vectorizer_lang_{model}.pkl", "wb") as f:
     pickle.dump(vectorizer, f)
 
-print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_{room_size}.pth")
+print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_fixed.pth")
 print("lang_based policy for training OpenDoor finished!")
-
-
-
-
-
-# # Acton Obj Door
-# torch.save({
-#     "policy": policy.state_dict(),
-#     "mission_encoder": mission_encoder.state_dict(),
-#     "mission_adapter": mission_adapter.state_dict()
-# }, f"lang_model/lang_policy_{model}.pth")
-
-# # Save the vectorizer
-# with open(f"lang_model/vectorizer_lang_{model}.pkl", "wb") as f:
-#     pickle.dump(vectorizer, f)
-
-# print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_fixed.pth")
-# print("lang_based policy for training OpenDoor finished!")
 
 
 
@@ -439,29 +404,25 @@ print("lang_based policy for training OpenDoor finished!")
 
 
 
-# # GoToSeq
-# torch.save({
-#     "policy": policy.state_dict(),
-#     "mission_encoder": mission_encoder.state_dict(),
-#     "mission_adapter": mission_adapter.state_dict()
-# }, f"lang_model/lang_policy_GoToSeq_{room_size}_{num_dists}_{num_rows}x{num_cols}.pth")
-
-# # Save the vectorizer
-# with open(f"lang_model/vectorizer_lang_GoToSeq_{room_size}_{num_dists}_{num_rows}x{num_cols}.pkl", "wb") as f:
-#     pickle.dump(vectorizer, f)
-
-# print("lang-policy parameters saved to lang_model/lang_policy_GoToSeq.pth")
-# print("lang_based policy for training Go To Seq finished!")
 
 
+import os, json, numpy as np
+
+# Use the 'model' variable as the environment folder name (e.g., "GoToLocal", "PickupDist")
+env_name = str(model) if "model" in globals() else "UnknownEnv"
+env_dir = os.path.join("metrics", env_name)
+os.makedirs(env_dir, exist_ok=True)
+
+# avg_steps_per_batch must be the 1D list/array you already plot at the end
+np.save(os.path.join(env_dir, "lang_avg_steps.npy"), np.array(avg_steps_per_batch))
+with open(os.path.join(env_dir, "lang_meta.json"), "w") as f:
+    json.dump({"label": "Language-adapted (LD-MAML)", "env": env_name}, f)
 
 
 
-
-
-# After training, plot    
-plt.plot(avg_steps_per_batch)
-plt.xlabel("Meta-batch")
-plt.ylabel("Steps")
-plt.title(f"Average Steps vs Meta-batch language adapted {model}_{room_size}_{num_dists}")
-plt.show()
+# # After training, plot    
+# plt.plot(avg_steps_per_batch)
+# plt.xlabel("Meta-batch")
+# plt.ylabel("Steps")
+# plt.title(f"Average Steps vs Meta-batch language adapted {model}_{room_size}_{num_dists}")
+# plt.show()

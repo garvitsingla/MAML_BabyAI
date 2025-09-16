@@ -61,14 +61,6 @@ PUTNEXT_MISSIONS = [
 ]
 
 
-# Generate all valid 2-step missions (no repeats)
-SEQ_MISSIONS = [
-    f"{m1} and {m2}"
-    for m1 in LOCAL_MISSIONS + DOOR_MISSIONS
-    for m2 in LOCAL_MISSIONS + DOOR_MISSIONS
-    if m1 != m2
-]
-
 # Open Door Missions including location-based
 OPEN_DOOR_ALL_MISSIONS = OPEN_DOOR_MISSIONS + DOOR_LOC_MISSIONS
 
@@ -664,12 +656,14 @@ class OpenDoorsOrderMissionEnv(Open):
 
 
 class ActionObjDoorMissionEnv(ActionObjDoor):
-    def __init__(self, **kwargs):
+    def __init__(self, objects=None, obj_colors=None, door_colors=None, **kwargs):
         self._forced_mission = None
-        # if max_steps is None:
-        #     max_steps = 20 * (room_size ** 2)
-        super().__init__( **kwargs)
-        # self.render_mode = kwargs.get('render_mode', None)
+        super().__init__(**kwargs)
+        # self.render_mode = kwargs.get('render_mode', 'human')
+
+        self.objects     = objects     if objects     is not None else OBJECTS
+        self.obj_colors  = obj_colors  if obj_colors  is not None else COLORS
+        self.door_colors = door_colors if door_colors is not None else COLORS
 
     def set_forced_mission(self, mission):
         self._forced_mission = mission
@@ -677,28 +671,38 @@ class ActionObjDoorMissionEnv(ActionObjDoor):
     def _parse_forced(self):
         if not self._forced_mission:
             return None
+
+        # Allow any object type from self.objects plus 'door'
+        obj_alt = "|".join(map(re.escape, sorted(set(self.objects) | {"door"})))
         m = re.match(
-            r"^\s*(pick\s+up|go\s+to|open)\s+(?:a|the)\s+(\w+)\s+(ball|key|door)\s*$",
+            rf"^\s*(pick\s+up|go\s+to|open)\s+(?:a|the)\s+(\w+)\s+({obj_alt})\s*$",
             self._forced_mission, re.IGNORECASE
         )
         if not m:
             return None
+
         action = m.group(1).lower().replace(" ", "")
         color  = m.group(2).lower()
         otype  = m.group(3).lower()
+
+        # validate color against the right palette
+        valid_colors = self.door_colors if otype == "door" else self.obj_colors
+        if color not in valid_colors:
+            return None
+
         mode = "pickup" if action == "pickup" else ("goto" if action == "goto" else "open")
         return (mode, color, otype)
 
     def gen_mission(self):
         self.place_agent(1, 1)
-
         spec = self._parse_forced()
         objs, doors = [], []
 
         if spec is None:
-            # --- new strategy: unique target first ---
-            target_kind  = self._rand_elem(["ball", "key", "door"])
-            target_color = self._rand_elem(COLORS)
+            # --- RANDOM PATH ---
+            target_kind  = self._rand_elem(self.objects + ['door'])
+            target_color = (self._rand_elem(self.door_colors) if target_kind == 'door'
+                            else self._rand_elem(self.obj_colors))
 
             if target_kind == "door":
                 target, _ = self.add_door(1, 1, color=target_color, locked=False)
@@ -707,41 +711,68 @@ class ActionObjDoorMissionEnv(ActionObjDoor):
             objs.append(target)
 
             # add 3 more doors with distinct colors
-            door_colors = list(self._rand_subset(COLORS, 3))
-            for c in door_colors:
-                d, _ = self.add_door(1, 1, color=c, locked=False)
-                doors.append(d)
-                objs.append(d)
+            candidates = [x for x in self.door_colors if x != target_color]
+            num = min(3, len(candidates))
+            for c in list(self._rand_subset(candidates, num)):
+                try:
+                    d, _ = self.add_door(1, 1, color=c, locked=False)
+                    doors.append(d); objs.append(d)
+                except Exception:
+                    pass
 
-            # add distractors of other colors/kinds
-            for _ in range(5):
-                k = self._rand_elem(["ball", "key"])
-                c = self._rand_elem([x for x in COLORS if not (k == target_kind and x == target_color)])
+            # add object distractors
+            for _ in range(3):
+                k = self._rand_elem(self.objects)
+                c = self._rand_elem([x for x in self.obj_colors if not (k == target_kind and x == target_color)])
                 try:
                     o, _ = self.add_object(1, 1, kind=k, color=c)
                     objs.append(o)
                 except Exception:
                     pass
 
-            # build instruction from chosen target
             desc = ObjDesc(target.type, target.color)
-            if target.type == "door":
-                self.instrs = (OpenInstr if self._rand_bool() else GoToInstr)(desc)
-            else:
-                self.instrs = (PickupInstr if self._rand_bool() else GoToInstr)(desc)
+            self.instrs = (OpenInstr if target.type == "door"
+                           else (PickupInstr if self._rand_bool() else GoToInstr))(desc)
 
         else:
-            # --- forced mission path stays like you had ---
+            # --- FORCED PATH ---
             mode, color, otype = spec
             if otype == "door":
                 target, _ = self.add_door(1, 1, color=color, locked=False)
+                candidates = [x for x in self.door_colors if x != color]
+                num = min(3, len(candidates))
+                for c in list(self._rand_subset(candidates, num)):
+                    try:
+                        d, _ = self.add_door(1, 1, color=c, locked=False)
+                        doors.append(d)
+                    except Exception:
+                        pass
+                for _ in range(3):
+                    k = self._rand_elem(self.objects)
+                    c = self._rand_elem(self.obj_colors)
+                    try:
+                        self.add_object(1, 1, kind=k, color=c)
+                    except Exception:
+                        pass
             else:
                 target, _ = self.add_object(1, 1, kind=otype, color=color)
+                for c in list(self._rand_subset(self.door_colors, 3)):
+                    try:
+                        d, _ = self.add_door(1, 1, color=c, locked=False)
+                        doors.append(d)
+                    except Exception:
+                        pass
+                for _ in range(3):
+                    k = self._rand_elem(self.objects)
+                    c = self._rand_elem([x for x in self.obj_colors if not (k == otype and x == color)])
+                    try:
+                        self.add_object(1, 1, kind=k, color=c)
+                    except Exception:
+                        pass
+
             desc = ObjDesc(target.type, target.color)
-            self.instrs = (
-                PickupInstr(desc) if mode == "pickup" else
-                (GoToInstr(desc) if mode == "goto" else OpenInstr(desc))
-            )
+            self.instrs = (PickupInstr(desc) if mode == "pickup"
+                           else (GoToInstr(desc) if mode == "goto" else OpenInstr(desc)))
 
         self.mission = self.instrs.surface(self)
         self.check_objs_reachable()
@@ -818,37 +849,6 @@ class PutNextLocalMissionEnv(PutNextLocal):
 
 
 
-
-
-
-class GoToSeqMissionEnv(GoToSeq):
-    def __init__(self, room_size=8, num_rows=1, num_cols=1, num_dists=4, max_steps=200, **kwargs):
-        super().__init__(
-            room_size=room_size,
-            num_rows=num_rows,
-            num_cols=num_cols,
-            num_dists=num_dists,
-            max_steps=max_steps,
-            **kwargs,
-        )
-        self._forced_mission = None
-        # self.render_mode = kwargs.get('render_mode', 'human')
-
-    def set_forced_mission(self, mission):
-        self._forced_mission = mission
-
-    def gen_mission(self):
-        obj1_type = self._rand_elem(OBJECTS)
-        obj1_color = self._rand_elem(COLORS)
-        obj2_type = self._rand_elem(OBJECTS)
-        obj2_color = self._rand_elem(COLORS)
-
-        if self._forced_mission is not None:
-            # Parse sequential mission if needed (for now, pass to super)
-            # You can implement custom mission parsing here if needed.
-            super().gen_mission()
-        else:
-            super().gen_mission()
 
 
 

@@ -9,7 +9,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 from environment import (LOCAL_MISSIONS, 
                          DOOR_MISSIONS, 
                          OPEN_DOOR_MISSIONS, 
-                         SEQ_MISSIONS, 
                          PICKUP_MISSIONS, 
                          OPEN_DOOR_ALL_MISSIONS,
                          OPEN_TWO_DOORS_MISSIONS,
@@ -17,7 +16,6 @@ from environment import (LOCAL_MISSIONS,
                          ACTION_OBJ_DOOR_MISSIONS)
 from environment import (GoToLocalMissionEnv, 
                          GoToOpenMissionEnv, 
-                         GoToSeqMissionEnv, 
                          GoToObjDoorMissionEnv,
                          PickupDistMissionEnv,
                          OpenDoorMissionEnv, 
@@ -36,9 +34,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # print("Using device:", device)
 
 # Create BabyAI env
-room_size=5
-num_dists=2
-max_steps=25
+room_size=7
+num_dists=12
+max_steps=500
 num_rows=2
 num_cols=2
 
@@ -46,13 +44,13 @@ num_cols=2
 vectorizer = CountVectorizer()
 
 
-# GoToLocal
-base_env = GoToLocalMissionEnv(room_size=room_size, num_dists=num_dists, max_steps=max_steps)
-missions = LOCAL_MISSIONS
-vectorizer.fit(missions)
-env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-model = "GoToLocal"
-print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \n")
+# # GoToLocal
+# base_env = GoToLocalMissionEnv(room_size=room_size, num_dists=num_dists, max_steps=max_steps)
+# missions = LOCAL_MISSIONS
+# vectorizer.fit(missions)
+# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+# model = "GoToLocal"
+# print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \n")
 
 
 # # PickupDist
@@ -136,16 +134,16 @@ print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps}
 
 
 
-# # ActionObjDoor
-# base_env = ActionObjDoorMissionEnv()
-# missions = ACTION_OBJ_DOOR_MISSIONS
-# CountVectorizer(ngram_range=(1, 2), lowercase=True)
-# vectorizer.fit(missions)
-# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-# model = "ActionObjDoor"
-# meta_batch_size = 20
-# print("General setup for ActionObjDoor")
-# # print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
+# ActionObjDoor
+base_env = ActionObjDoorMissionEnv(objects = None, door_colors=None, obj_colors=None)
+missions = ACTION_OBJ_DOOR_MISSIONS
+CountVectorizer(ngram_range=(1, 2), lowercase=True)
+vectorizer.fit(missions)
+env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+model = "ActionObjDoor"
+meta_batch_size = 20
+print("General setup for ActionObjDoor")
+# print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
 
 
 
@@ -159,22 +157,6 @@ print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps}
 # model = "PutNextLocal"
 # print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n")
 
-
-
-
-# # Open
-# base_env = OpenMissionEnv(room_size=room_size,num_rows=num_rows, num_cols=num_cols, num_dists=num_dists,max_steps=max_steps)
-# missions = OPEN_DOOR_MISSIONS
-# vectorizer.fit(missions)
-# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-# print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \nnum_rows: {num_rows} \nnum_cols: {num_cols}")
-
-
-
-
-# # GoToSeq
-# base_env = GoToSeqMissionEnv(room_size=room_size, num_rows=num_rows, num_cols=num_cols, num_dists=num_dists, max_steps=max_steps)
-# env = BabyAIMissionTaskWrapper(base_env, missions=SEQ_MISSIONS)
 
 
 
@@ -211,7 +193,7 @@ baseline = LinearFeatureBaseline(input_size).to(device)
 # 3. Sampler setup
 sampler = MultiTaskSampler(
     env=env,
-    batch_size=3,         # Number of episodes per task
+    batch_size=30,         # Number of episodes per task
     policy=policy,
     baseline=baseline,
     seed=1,
@@ -224,7 +206,7 @@ meta_learner = MAMLTRPO(policy=policy, fast_lr=1e-5, first_order=True, device=de
 # 5. Training loop
 avg_steps_per_batch = []
 meta_batch_size = globals().get("meta_batch_size") or min(12, len(env.missions))
-num_batches = 5  # Number of meta-
+num_batches = 100  # Number of meta-
 
 tasks = sampler.sample_tasks(len(env.missions))
 print(f"\nTotal {len(env.missions)} Tasks that can be sampled: {tasks}\n")
@@ -312,49 +294,40 @@ print(f"Execution time: {(end_time - start_time)/60} minutes")
 
 
 
-# Open Doors Order
+# # Open Doors Order
+# # Save the trained meta-policy parameters
+# torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}_{room_size}.pth")
+# print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}_{room_size}.pth")
+
+# print("Meta-training for inner loop finished!")
+
+
+
+
+# ActionObjDoor 
 # Save the trained meta-policy parameters
-torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}_{room_size}.pth")
-print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}_{room_size}.pth")
+torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}.pth")
+print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}.pth")
 
 print("Meta-training for inner loop finished!")
 
 
 
 
-# # ActionObjDoor 
-# # Save the trained meta-policy parameters
-# torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}.pth")
-# print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}.pth")
+import os, json, numpy as np
 
-# print("Meta-training for inner loop finished!")
+env_name = str(model) if "model" in globals() else "UnknownEnv"
+env_dir = os.path.join("metrics", env_name)
+os.makedirs(env_dir, exist_ok=True)
 
+np.save(os.path.join(env_dir, "inner_avg_steps.npy"), np.array(avg_steps_per_batch))
+with open(os.path.join(env_dir, "inner_meta.json"), "w") as f:
+    json.dump({"label": "MAML (Inner Loop)", "env": env_name}, f)
 
-
-
-
-# # Open
-# # Save the trained meta-policy parameters
-# torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_Open_{room_size}_{num_dists}_{num_rows}x{num_cols}.pth")
-# print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_Open_{room_size}_{num_dists}_{num_rows}x{num_cols}.pth")
-
-# print("Meta-training for inner loop finished!")
-
-
-
-# # Environment 3
-# # Save the trained meta-policy parameters
-# torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_GoToSeq_{room_size}_{num_dists}_{num_rows}x{num_cols}.pth")
-# print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_GoToSeq_{room_size}_{num_dists}_{num_rows}x{num_cols}.pth")
-
-# print("Meta-training for inner loop finished!")
-
-
-
-# After training, plot
-import matplotlib.pyplot as plt     
-plt.plot(avg_steps_per_batch)
-plt.xlabel("Meta-inner_loop-batch")
-plt.ylabel("Average steps to goal")
-plt.title(f"inner-loop_{model}_{room_size}_{num_dists}")
-plt.show()
+# # After training, plot
+# import matplotlib.pyplot as plt     
+# plt.plot(avg_steps_per_batch)
+# plt.xlabel("Meta-inner_loop-batch")
+# plt.ylabel("Average steps to goal")
+# plt.title(f"inner-loop_{model}_{room_size}_{num_dists}")
+# plt.show()
