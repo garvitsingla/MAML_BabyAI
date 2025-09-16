@@ -145,21 +145,6 @@ print(f"room_size: {room_size}\n num_dists: {num_dists}\n max_steps: {max_steps}
 # # # print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
 
 
-
-# Open
-# base_env = OpenMissionEnv(room_size=room_size,num_rows=num_rows, num_cols=num_cols, num_dists=num_dists, max_steps=max_steps)
-# missions=OPEN_DOOR_MISSIONS
-# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-# print(f"room_size: {room_size}\n num_dists: {num_dists}\n max_steps: {max_steps}\n  num_rows: {num_rows}\n num_cols: {num_cols}\n model used: {model}")
-
-
-
-# Environment 3
-# base_env = GoToSeqMissionEnv(room_size=room_size, num_rows=num_rows, num_cols=num_cols, num_dists=num_dists, max_steps=max_steps)
-# print(f"room_size: {room_size}\n num_dists: {num_dists}\n max_steps: {max_steps}\n  num_rows: {num_rows}\n num_cols: {num_cols}")
-
-
-
 print(f"env name {base_env} \n model used: {model}\n")
 
 # ----- Restore trained lang-adapted policy -----
