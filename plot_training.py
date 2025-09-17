@@ -3,6 +3,16 @@ import argparse, os
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Set global font sizes (good for papers)
+plt.rcParams.update({
+    "font.size": 14,        # default text size
+    "axes.titlesize": 16,   # title
+    "axes.labelsize": 14,   # x and y labels
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 12
+})
+
 def load_env_data(env_dir):
     inner_path = os.path.join(env_dir, "inner_avg_steps.npy")
     lang_path  = os.path.join(env_dir, "lang_avg_steps.npy")
@@ -17,7 +27,7 @@ def plot_line(env_dir, save_path=None, show=True, dpi=300, out_dir="figures"):
 
     plt.plot(inner, label="MAML Policy")
     plt.plot(lang,  label="Lang-adapted Policy")
-    plt.xlabel("Episodes")
+    plt.xlabel("Meta-iterations")
     plt.ylabel("Average Steps")
     plt.title(env_name)
     plt.legend()
@@ -39,7 +49,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot MAML vs Lang steps for one environment")
     parser.add_argument("env_dir", help="Path to environment folder (e.g., metrics/GoToLocal)")
     parser.add_argument("--save", metavar="FILE", help="Save figure to file (PNG, PDF, etc.)")
-    parser.add_argument("--dpi", type=int, default=300, help="DPI for saved figure")
+    parser.add_argument("--dpi", type=int, default=400, help="DPI for saved figure")
     parser.add_argument("--no-show", action="store_true", help="Do not display the plot window")
     args = parser.parse_args()
 
