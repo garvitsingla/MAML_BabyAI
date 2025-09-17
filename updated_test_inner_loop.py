@@ -30,13 +30,13 @@ start_time = time.time()
 
 
 # ... import your policy, baseline, meta-learner (MAMLTRPO), etc.
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 # print("Using device:", device)
 
 # Create BabyAI env
 room_size=7
-num_dists=12
-max_steps=500
+num_dists=3
+max_steps=300
 num_rows=2
 num_cols=2
 
@@ -44,13 +44,13 @@ num_cols=2
 vectorizer = CountVectorizer()
 
 
-# # GoToLocal
-# base_env = GoToLocalMissionEnv(room_size=room_size, num_dists=num_dists, max_steps=max_steps)
-# missions = LOCAL_MISSIONS
-# vectorizer.fit(missions)
-# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-# model = "GoToLocal"
-# print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \n")
+# GoToLocal
+base_env = GoToLocalMissionEnv(room_size=room_size, num_dists=num_dists, max_steps=max_steps)
+missions = LOCAL_MISSIONS
+vectorizer.fit(missions)
+env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+model = "GoToLocal"
+print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \n")
 
 
 # # PickupDist
@@ -134,16 +134,16 @@ vectorizer = CountVectorizer()
 
 
 
-# ActionObjDoor
-base_env = ActionObjDoorMissionEnv(objects = None, door_colors=None, obj_colors=None)
-missions = ACTION_OBJ_DOOR_MISSIONS
-CountVectorizer(ngram_range=(1, 2), lowercase=True)
-vectorizer.fit(missions)
-env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-model = "ActionObjDoor"
-meta_batch_size = 20
-print("General setup for ActionObjDoor")
-# print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
+# # ActionObjDoor
+# base_env = ActionObjDoorMissionEnv(objects = None, door_colors=None, obj_colors=None)
+# missions = ACTION_OBJ_DOOR_MISSIONS
+# CountVectorizer(ngram_range=(1, 2), lowercase=True)
+# vectorizer.fit(missions)
+# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+# model = "ActionObjDoor"
+# meta_batch_size = 20
+# print("General setup for ActionObjDoor")
+# # print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
 
 
 
@@ -239,12 +239,12 @@ end_time = time.time()
 print(f"Execution time: {(end_time - start_time)/60} minutes")
 
 
-# # GoToLocal
-# # Save the trained meta-policy parameters
-# torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}_{room_size}_{num_dists}_{max_steps}.pth")
-# print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}_{room_size}_{num_dists}_{max_steps}.pth")
+# GoToLocal
+# Save the trained meta-policy parameters
+torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}_{room_size}_{num_dists}_{max_steps}.pth")
+print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}_{room_size}_{num_dists}_{max_steps}.pth")
 
-# print("Meta-training for inner loop finished!")
+print("Meta-training for inner loop finished!")
 
 
 
@@ -266,12 +266,12 @@ print(f"Execution time: {(end_time - start_time)/60} minutes")
 
 
 
-# # Go_To_Open
-# # Save the trained meta-policy parameters
-# torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}_new_{room_size}_{num_dists}_{num_rows}x{num_cols}_{max_steps}.pth")
-# print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_GoToOpen_{room_size}_{num_dists}_{num_rows}x{num_cols}_{max_steps}.pth")
+# Go_To_Open
+# Save the trained meta-policy parameters
+torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}_new_{room_size}_{num_dists}_{num_rows}x{num_cols}_{max_steps}.pth")
+print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_GoToOpen_{room_size}_{num_dists}_{num_rows}x{num_cols}_{max_steps}.pth")
 
-# print("Meta-training for inner loop finished!")
+print("Meta-training for inner loop finished!")
 
 
 
@@ -304,12 +304,12 @@ print(f"Execution time: {(end_time - start_time)/60} minutes")
 
 
 
-# ActionObjDoor 
-# Save the trained meta-policy parameters
-torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}.pth")
-print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}.pth")
+# # ActionObjDoor 
+# # Save the trained meta-policy parameters
+# torch.save(policy.state_dict(), f"inner_loop_model/inner_loop_{model}.pth")
+# print(f"inner_loop-policy parameters saved to inner_loop_model/inner_loop_{model}.pth")
 
-print("Meta-training for inner loop finished!")
+# print("Meta-training for inner loop finished!")
 
 
 

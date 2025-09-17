@@ -35,12 +35,6 @@ from environment import (GoToLocalMissionEnv,
                             PutNextLocalMissionEnv)
 import time
 import gc
-# os.environ.setdefault("OMP_NUM_THREADS", "1")
-# os.environ.setdefault("MKL_NUM_THREADS", "1")
-# try:
-#     mp.set_start_method("spawn", force=True)
-# except RuntimeError:
-#     pass
 
 start_time = time.time()
 
@@ -50,9 +44,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print("ALL PARAMETERS ARE BEING TRAINED - ENCODER, ADAPTER, POLICY")
 # Create BabyAI env
-room_size=7
+room_size=8
 num_dists=12
-max_steps=500
+max_steps=600
 num_rows=2
 num_cols=2
 
@@ -89,14 +83,14 @@ vectorizer = CountVectorizer()
 
 
 
-# # GoToOpen
-# base_env = GoToOpenMissionEnv(room_size=room_size, num_rows=num_rows, num_cols=num_cols, num_dists=num_dists, max_steps=max_steps)
-# missions=LOCAL_MISSIONS
-# CountVectorizer(ngram_range=(1, 2), lowercase=True)
-# vectorizer.fit(missions)
-# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-# model = "GoToOpen"
-# print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \nnum_rows: {num_rows} \nnum_cols: {num_cols}")
+# GoToOpen
+base_env = GoToOpenMissionEnv(room_size=room_size, num_rows=num_rows, num_cols=num_cols, num_dists=num_dists, max_steps=max_steps)
+missions=LOCAL_MISSIONS
+CountVectorizer(ngram_range=(1, 2), lowercase=True)
+vectorizer.fit(missions)
+env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+model = "GoToOpen"
+print(f"room_size: {room_size} \nnum_dists: {num_dists} \nmax_steps: {max_steps} \nnum_rows: {num_rows} \nnum_cols: {num_cols}")
 
 
 
@@ -150,16 +144,16 @@ vectorizer = CountVectorizer()
 
 
 
-# ActionObjDoor
-base_env = ActionObjDoorMissionEnv(objects = None, door_colors=None, obj_colors=None)
-missions = ACTION_OBJ_DOOR_MISSIONS
-CountVectorizer(ngram_range=(1, 2), lowercase=True)
-vectorizer.fit(missions)
-env = BabyAIMissionTaskWrapper(base_env, missions=missions)
-model = "ActionObjDoor"
-meta_batch_size = 20
-print("General setup for ActionObjDoor")
-# print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
+# # ActionObjDoor
+# base_env = ActionObjDoorMissionEnv(objects = None, door_colors=None, obj_colors=None)
+# missions = ACTION_OBJ_DOOR_MISSIONS
+# CountVectorizer(ngram_range=(1, 2), lowercase=True)
+# vectorizer.fit(missions)
+# env = BabyAIMissionTaskWrapper(base_env, missions=missions)
+# model = "ActionObjDoor"
+# meta_batch_size = 20
+# print("General setup for ActionObjDoor")
+# # print(f"room_size: {room_size}  \nmax_steps: {max_steps} \n num_distractors: {num_dists} \n")
 
 
 # # PutNextLocal
@@ -318,19 +312,19 @@ print(f"Execution time: {(end_time - start_time)/60}minutes")
 
 
 
-# # GoToObjDoor
-# torch.save({
-#     "policy": policy.state_dict(),
-#     "mission_encoder": mission_encoder.state_dict(),
-#     "mission_adapter": mission_adapter.state_dict()
-# }, f"lang_model/lang_policy_{model}_{num_dists}_{max_steps}.pth")
+# GoToObjDoor
+torch.save({
+    "policy": policy.state_dict(),
+    "mission_encoder": mission_encoder.state_dict(),
+    "mission_adapter": mission_adapter.state_dict()
+}, f"lang_model/lang_policy_{model}_{num_dists}_{max_steps}.pth")
 
-# # Save the vectorizer
-# with open(f"lang_model/vectorizer_lang_{model}_{num_dists}_{max_steps}.pkl", "wb") as f:
-#     pickle.dump(vectorizer, f)
+# Save the vectorizer
+with open(f"lang_model/vectorizer_lang_{model}_{num_dists}_{max_steps}.pkl", "wb") as f:
+    pickle.dump(vectorizer, f)
 
-# print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_{num_dists}_{max_steps}.pth")
-# print("lang_based policy for training Go To ObjDoor finished!")
+print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_{num_dists}_{max_steps}.pth")
+print("lang_based policy for training Go To ObjDoor finished!")
 
 
 
@@ -369,19 +363,19 @@ print(f"Execution time: {(end_time - start_time)/60}minutes")
 
 
 
-# Acton Obj Door
-torch.save({
-    "policy": policy.state_dict(),
-    "mission_encoder": mission_encoder.state_dict(),
-    "mission_adapter": mission_adapter.state_dict()
-}, f"lang_model/lang_policy_{model}.pth")
+# # Acton Obj Door
+# torch.save({
+#     "policy": policy.state_dict(),
+#     "mission_encoder": mission_encoder.state_dict(),
+#     "mission_adapter": mission_adapter.state_dict()
+# }, f"lang_model/lang_policy_{model}.pth")
 
-# Save the vectorizer
-with open(f"lang_model/vectorizer_lang_{model}.pkl", "wb") as f:
-    pickle.dump(vectorizer, f)
+# # Save the vectorizer
+# with open(f"lang_model/vectorizer_lang_{model}.pkl", "wb") as f:
+#     pickle.dump(vectorizer, f)
 
-print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_fixed.pth")
-print("lang_based policy for training OpenDoor finished!")
+# print(f"lang-policy parameters saved to lang_model/lang_policy_{model}_fixed.pth")
+# print("lang_based policy for training OpenDoor finished!")
 
 
 
